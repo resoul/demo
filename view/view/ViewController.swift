@@ -111,6 +111,7 @@ final class ViewController: UIViewController {
         configureLayout()
         buildHeader()
         buildEngineEntry()
+        buildMascotEntry()
         buildFilters()
         buildEffects()
         let footer = LabStyle.label("СОЗДАНО ИЗ СВЕТА, КОДА И КАСАНИЙ\nUIKit + Metal · 7 экспериментов", size: 10,
@@ -186,6 +187,23 @@ final class ViewController: UIViewController {
         button.accessibilityIdentifier = "openMetalEngine"
         button.addAction(UIAction { [weak self] _ in
             self?.navigationController?.pushViewController(MetalEngineViewController(), animated: true)
+        }, for: .touchUpInside)
+        content.addArrangedSubview(button)
+    }
+
+    /// The login form with a Rive mascot (MascotLogin/, the only screen that uses RiveRuntime).
+    private func buildMascotEntry() {
+        let button = UIButton(type: .system)
+        var config = UIButton.Configuration.filled()
+        config.title = "LOGIN MASCOT   ·   Rive  ↗"
+        config.baseBackgroundColor = LabStyle.panel
+        config.baseForegroundColor = LabStyle.accent
+        config.cornerStyle = .large
+        config.contentInsets = NSDirectionalEdgeInsets(top: 18, leading: 16, bottom: 18, trailing: 16)
+        button.configuration = config
+        button.accessibilityIdentifier = "openMascotLogin"
+        button.addAction(UIAction { [weak self] _ in
+            self?.navigationController?.pushViewController(MascotLoginViewController(), animated: true)
         }, for: .touchUpInside)
         content.addArrangedSubview(button)
     }

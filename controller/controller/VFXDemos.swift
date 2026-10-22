@@ -48,6 +48,13 @@ final class VFXDemoMenuViewController: UITableViewController {
             ("Tilt Skeletons", "rectangle.stack.fill", { SkeletonDemoViewController() }),
             ("Kinetic Type", "textformat.size", { KineticTypeDemoViewController() }),
         ]),
+        ("Channel", [
+            ("Telegram Post", "bubble.left.and.text.bubble.right.fill", { ChannelFeedDemoViewController() }),
+        ]),
+        ("Social", [
+            ("Timeline · X-style", "text.bubble.fill", { TimelineDemoViewController() }),
+            ("Photo Feed · Instagram-style", "camera.fill", { PhotoFeedDemoViewController() }),
+        ]),
         ("Effects", [
             ("Matrix Digital Rain", "chevron.left.forwardslash.chevron.right", { MatrixRainDemoViewController() }),
             ("Fluid Mesh Gradient", "paintpalette.fill", { FluidGradientDemoViewController() }),

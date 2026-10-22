@@ -31,14 +31,9 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
 
         modeControl.selectedSegmentIndex = 0
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: modeControl)
-        navigationItem.leftBarButtonItems = [
-            UIBarButtonItem(title: "VFX", primaryAction: UIAction { [weak self] _ in
-                self?.navigationController?.pushViewController(VFXDemoMenuViewController(), animated: true)
-            }),
-            UIBarButtonItem(title: "Login", primaryAction: UIAction { [weak self] _ in
-                self?.navigationController?.pushViewController(MascotLoginViewController(), animated: true)
-            }),
-        ]
+        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "VFX", primaryAction: UIAction { [weak self] _ in
+            self?.navigationController?.pushViewController(VFXDemoMenuViewController(), animated: true)
+        })
 
         tableView.dataSource = self
         tableView.delegate = self

@@ -6,6 +6,10 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B10000000000000000000001 /* RiveRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = B10000000000000000000002 /* RiveRuntime */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		A10000000000000000000001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -51,6 +55,7 @@
 		89565C353089321B0086A24E /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				B10000000000000000000001 /* RiveRuntime in Frameworks */,
 			);
 		};
 		A10000000000000000000007 /* Frameworks */ = {
@@ -96,6 +101,9 @@
 				89565C3A3089321B0086A24E /* view */,
 			);
 			name = view;
+			packageProductDependencies = (
+				B10000000000000000000002 /* RiveRuntime */,
+			);
 			productName = view;
 			productReference = 89565C383089321B0086A24E /* view.app */;
 			productType = "com.apple.product-type.application";
@@ -145,6 +153,9 @@
 			);
 			mainGroup = 89565C2F3089321B0086A24E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B10000000000000000000003 /* XCRemoteSwiftPackageReference "rive-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 89565C393089321B0086A24E /* Products */;
 			projectDirPath = "";
@@ -434,6 +445,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B10000000000000000000003 /* XCRemoteSwiftPackageReference "rive-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/rive-app/rive-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.28.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B10000000000000000000002 /* RiveRuntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B10000000000000000000003 /* XCRemoteSwiftPackageReference "rive-ios" */;
+			productName = RiveRuntime;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 89565C303089321B0086A24E /* Project object */;
 	validationLevel = 1;

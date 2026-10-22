@@ -13,12 +13,12 @@
 ## 2. Add it to the project
 
 1. Rename the file to `login_mascot.riv` (or set `MascotRig.fileName` to your file's name, without the extension).
-2. Put it in `controller/MascotLogin/`.
-   This project uses Xcode synchronized folders, so any file in `controller/` is bundled automatically, with no
-   "Add Files" step. In older projects, drag it into Xcode and tick the **controller** target in
+2. Put it in `view/MascotLogin/`.
+   This project uses Xcode synchronized folders, so any file in `view/` is bundled automatically, with no
+   "Add Files" step. In older projects, drag it into Xcode and tick the **view** target in
    "Add to targets".
 3. To check that it's bundled, open the target's **Build Phases → Copy Bundle Resources**, or build and look
-   for `login_mascot.riv` inside `controller.app`.
+   for `login_mascot.riv` inside `view.app`.
 
 ## 3. Match the input names
 
@@ -56,4 +56,4 @@ let login = MascotLoginViewController(rig: MascotRig(
 navigationController?.pushViewController(MascotLoginViewController(), animated: true)
 ```
 
-In the demo app it opens with the **Login** button on the first screen.
+In the demo app it opens with the **LOGIN MASCOT** button on the first screen.

@@ -214,11 +214,13 @@ class VFXMetalView: UIView {
         let size = CGSize(width: (bounds.width * contentScaleFactor).rounded(),
                           height: (bounds.height * contentScaleFactor).rounded())
         guard size.width > 0, size.height > 0 else { return }
+        // Only on a real resize: layout passes are frequent (any sibling changing size relayouts its
+        // parents), and rendering synchronously here can block on nextDrawable mid-scroll.
         if size != metalLayer.drawableSize {
             metalLayer.drawableSize = size
             drawableSizeDidChange(size)
+            renderFrame()   // fill the new size right away instead of waiting for the next tick
         }
-        renderFrame()   // fill the new size right away instead of waiting for the next tick
     }
 
     // MARK: Subclass hooks

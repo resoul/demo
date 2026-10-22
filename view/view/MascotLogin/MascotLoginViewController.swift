@@ -1,6 +1,6 @@
 //
 //  MascotLoginViewController.swift
-//  controller
+//  view
 //
 //  Login form with a Rive mascot: its eyes follow the caret in the email field,
 //  it covers its eyes while the password is being typed and peeks when the password is shown.
