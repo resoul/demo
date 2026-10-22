@@ -2,7 +2,7 @@
 //  ParticleCompute.metal
 //  controller
 //
-//  Particle physics for ParticleMorphEngine: one kernel, one thread per particle, six scenarios.
+//  Particle physics for ParticleMorphEngine: one kernel, one thread per particle, seven scenarios.
 //  Positions are in points (UIKit space, y down); every mode is frame-rate independent.
 //
 
@@ -299,6 +299,185 @@ static void loaderStep(thread Particle &p, constant ParticleUniforms &u, const d
     p.color.a *= 1.0 + 0.8 * sin(M_PI_F * t);
 }
 
+// MARK: - Module 7: data charts
+
+/// Angle from 12 o'clock, clockwise (y down), 0…1 of a turn.
+static float clockTurn(float2 d) {
+    float a = atan2(d.y, d.x) + M_PI_F * 0.5;
+    return (a < 0.0 ? a + 2.0 * M_PI_F : a) / (2.0 * M_PI_F);
+}
+
+/// When a released particle leaves, as a fraction of the release timeline.
+static float releaseDelay(thread Particle &p, constant ParticleUniforms &u, uint id) {
+    float2 center = u.bounds.xy + u.bounds.zw * 0.5;
+    switch (u.releaseStyle) {
+        case ParticleReleaseDust: {
+            float edge = saturate((p.startPosition.x - u.bounds.x) / max(u.bounds.z, 1.0));
+            float ragged = (snoise(float3(p.startPosition * 0.035, 0.0)) * 0.5 + 0.5) * 0.1;
+            return edge * 0.45 + ragged + p.seed * 0.04;
+        }
+        case ParticleReleaseBlackHole: return p.seed * 0.35;
+        case ParticleReleaseSweep:     return clockTurn(p.startPosition - center) * 0.65 + p.seed * 0.03;
+        case ParticleReleaseGravity:   return p.seed * 0.12;
+        case ParticleReleaseNova:      return 0.3 + p.seed * 0.03;   // the first 30% is the charge-up
+        case ParticleReleaseSteam:     return p.seed * 0.35;
+        case ParticleReleaseHome:      return clockTurn(p.startPosition - center) * 0.55 + p.seed * 0.08;
+        default:                       return 0.0;
+    }
+}
+
+static void fade(thread Particle &p, float rate, float dt) {
+    p.color.a = mix(p.color.a, 0.0, 1.0 - exp(-rate * dt));
+}
+
+static void releasedStep(thread Particle &p, constant ParticleUniforms &u, uint id) {
+    float dt = u.deltaTime;
+    float2 center = u.bounds.xy + u.bounds.zw * 0.5;
+    float radius = max(u.bounds.z * 0.5, 1.0);
+    // Gone (faded out, or far off screen): park it until it is recaptured.
+    float2 outside = abs(p.currentPosition - u.viewSize * 0.5) - u.viewSize;
+    if (p.color.a < 0.004 || max(outside.x, outside.y) > 0.0) {
+        p.velocity = 0.0;
+        p.color.a = 0.0;
+        return;
+    }
+
+    float delay = releaseDelay(p, u, id);
+    if (u.stage < delay) {
+        // Not released yet: hold where it was when the release began. Nova draws its charge-up here.
+        float2 home = p.startPosition;
+        if (u.releaseStyle == ParticleReleaseNova) {
+            float squeeze = smoothstep(0.0, 0.3, u.stage);
+            home = center + (home - center) * (1.0 - 0.22 * squeeze)
+                 + (float2(hash11(id * 3U + uint(u.time * 60.0)), hash11(id * 7U + uint(u.time * 60.0))) - 0.5)
+                   * 5.0 * squeeze;
+        }
+        criticalSpring(p.currentPosition, p.velocity, home, 14.0, dt);
+        return;
+    }
+    float age = (u.stage - delay) * u.releaseDuration;   // seconds since this particle let go
+    float2 flow = curlNoise(p.currentPosition * 0.012, u.time * 0.4 + p.seed);
+
+    switch (u.releaseStyle) {
+        case ParticleReleaseBlackHole: {
+            // Overdamped flow, not orbital physics (a strong swirl would just trap particles in orbit):
+            // the infall speeds up near the center and over time, the swirl winds it into a spiral.
+            float2 rel = p.currentPosition - center;
+            float d = max(length(rel), 1e-3);
+            float2 inward = -rel / d;
+            float2 swirl = float2(-inward.y, inward.x);
+            float infall = (40.0 + 900.0 * radius / (d + 15.0)) * (0.3 + 1.2 * age);
+            float spin = 500.0 * sqrt(radius / (d + 15.0));
+            // Near the center the direction to it turns fast; a lagging velocity would average the pull
+            // out into an orbit, so the flow takes over almost instantly there.
+            float response = mix(40.0, 6.0, saturate(d / radius));
+            p.velocity = mix(p.velocity, inward * infall + swirl * spin, 1.0 - exp(-response * dt));
+            p.currentPosition += p.velocity * dt;
+            if (d < 5.0 || dot(p.currentPosition - center, rel) < 0.0) {   // crossed the horizon
+                p.currentPosition = center;
+                p.color.a = 0.0;
+            } else {
+                p.color.a = min(p.color.a, smoothstep(4.0, 45.0, d) * 1.4);
+            }
+            break;
+        }
+        case ParticleReleaseSweep: {
+            // Flicked off along the hand's direction (clockwise), a little outwards, sparkling out.
+            float2 rel = p.currentPosition - center;
+            float2 outward = rel / max(length(rel), 1e-3);
+            float2 clockwise = float2(-outward.y, outward.x);
+            p.velocity += (clockwise * 900.0 + outward * 260.0 + flow * 160.0) * dt;
+            p.velocity *= exp(-1.2 * dt);
+            p.currentPosition += p.velocity * dt;
+            fade(p, mix(1.2, 2.2, p.seed), dt);
+            break;
+        }
+        case ParticleReleaseGravity: {
+            // A low heap under the chart: each particle has its own resting height on the floor.
+            float heap = 26.0 * saturate(1.0 - abs(p.currentPosition.x - center.x) / (radius * 1.5));
+            float ground = u.floorY - 2.0 - heap * pow(hash11(id * 13U + 5U), 1.5);
+            p.velocity.y += 1500.0 * dt;
+            p.velocity.x += flow.x * 40.0 * dt;
+            p.currentPosition += p.velocity * dt;
+            if (p.currentPosition.y > ground) {
+                p.currentPosition.y = ground;
+                p.velocity.y = p.velocity.y > 120.0 ? -p.velocity.y * mix(0.15, 0.45, p.seed) : 0.0;
+                p.velocity.x *= 0.6;
+            }
+            if (age > 1.3) {
+                fade(p, 2.2, dt);
+            }
+            break;
+        }
+        case ParticleReleaseNova: {
+            // Closed form: a blast outwards with drag, cooling from white-hot to ember orange.
+            float2 rel = p.startPosition - center;
+            float2 dir = rel / max(length(rel), 1e-3);
+            float v0 = mix(350.0, 1500.0, hash11(id * 17U + 3U));
+            const float k = 2.2;
+            float dist = length(rel) * 0.78 + v0 / k * (1.0 - exp(-k * age));
+            float2 position = center + dir * dist + curlNoise(p.startPosition * 0.02, age) * 18.0 * age;
+            moveTo(p, position, dt);
+            p.color.rgb = mix(p.color.rgb, float3(1.0, 0.5, 0.2), 1.0 - exp(-1.6 * dt));
+            p.color.a = 1.0 - smoothstep(0.1, 1.0, age * mix(0.85, 1.15, p.seed));
+            break;
+        }
+        case ParticleReleaseSteam: {
+            p.velocity += (float2(flow.x * 260.0, -240.0 + flow.y * 120.0)) * dt;
+            p.velocity *= exp(-1.1 * dt);
+            p.currentPosition += p.velocity * dt;
+            p.color.rgb = mix(p.color.rgb, float3(0.92, 0.95, 1.0), 1.0 - exp(-1.5 * dt));
+            fade(p, mix(0.6, 1.1, p.seed), dt);
+            break;
+        }
+        case ParticleReleaseHome: {
+            // Fly to the target (e.g. the item's legend row) and melt into it.
+            criticalSpring(p.currentPosition, p.velocity, p.targetPosition, mix(5.0, 8.0, p.seed), dt);
+            float d = length(p.targetPosition - p.currentPosition);
+            p.color.a = min(p.color.a, smoothstep(3.0, 50.0, d));
+            break;
+        }
+        default: {   // dust: wind up and to the right
+            float2 wind = float2(mix(140.0, 360.0, hash11(id * 5U + 11U)), -70.0);
+            p.velocity += (wind + flow * 160.0) * dt;
+            p.velocity *= exp(-0.9 * dt);
+            p.currentPosition += p.velocity * dt;
+            fade(p, mix(0.45, 1.0, p.seed), dt);
+            break;
+        }
+    }
+}
+
+static void chartStep(thread Particle &p, constant ParticleUniforms &u, uint id) {
+    float dt = u.deltaTime;
+    if (p.targetColor.a < 0.01) {
+        releasedStep(p, u, id);
+        return;
+    }
+
+    // The finger pushes particles aside; they spring back once it moves on.
+    if (u.touchActive > 0.0) {
+        float2 away = p.currentPosition - u.touchPos;
+        float d = length(away);
+        if (d < u.touchRadius && d > 1e-3) {
+            p.velocity += away / d * (1.0 - d / u.touchRadius) * u.touchPower * dt;
+        }
+    }
+    // Home is the target plus a slow idle drift, so a resting chart still looks alive. Fine particles
+    // (small text) drift less, or their letters would blur.
+    float2 drift = curlNoise(p.targetPosition * 0.02 + p.seed * 7.0, u.time * 0.35) * u.noiseStrength
+                 * saturate(p.size * 0.45);
+    // Charging (hold-to-clear): a nervous tremble that grows with the charge, and the shape already
+    // leans in towards the center of `bounds`, as if the release were pulling at it.
+    float2 tremble = float2(hash11(id * 31U + uint(u.time * 30.0)), hash11(id * 37U + uint(u.time * 30.0))) - 0.5;
+    float2 center = u.bounds.xy + u.bounds.zw * 0.5;
+    drift += tremble * 16.0 * u.charge + (center - p.targetPosition) * 0.08 * u.charge;
+    // Per-particle stiffness: a morph arrives as a cascade instead of one rigid jump.
+    float omega = mix(4.0, 9.0, p.seed) * max(p.stiffness, 1.0);
+    criticalSpring(p.currentPosition, p.velocity, p.targetPosition + drift, omega, dt);
+    p.color = mix(p.color, p.targetColor, 1.0 - exp(-6.0 * dt));
+}
+
 // MARK: - Kernels
 
 kernel void particleComputeKernel(device Particle *particles [[buffer(ParticleBufferIndexParticles)]],
@@ -316,6 +495,7 @@ kernel void particleComputeKernel(device Particle *particles [[buffer(ParticleBu
         case ParticleModeThanos:  thanosStep(p, u, id); break;
         case ParticleModeBadge:   badgeStep(p, u); break;
         case ParticleModeLoader:  loaderStep(p, u, keyframes, id); break;
+        case ParticleModeChart:   chartStep(p, u, id); break;
         default: break;
     }
     particles[id] = p;
@@ -339,6 +519,9 @@ kernel void particleRetargetKernel(device Particle *particles [[buffer(0)]],
     }
     if (r.flags & ParticleRetargetColors) {
         p.color = colors[id];
+    }
+    if (r.flags & ParticleRetargetTargetColors) {
+        p.targetColor = colors[id];
     }
     if (r.flags & ParticleRetargetStopVelocity) {
         p.velocity = 0.0;

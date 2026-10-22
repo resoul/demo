@@ -23,7 +23,7 @@ private func makeParticles(at positions: [SIMD2<Float>], targets: [SIMD2<Float>]
     return positions.indices.map { i in
         Particle(currentPosition: positions[i], targetPosition: targets?[i] ?? positions[i],
                  startPosition: positions[i], velocity: .zero, color: colors?[i] ?? fallback,
-                 size: size, seed: random.unit())
+                 targetColor: colors?[i] ?? fallback, size: size, seed: random.unit(), stiffness: 1)
     }
 }
 

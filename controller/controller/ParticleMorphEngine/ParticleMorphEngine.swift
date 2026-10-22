@@ -118,6 +118,13 @@ final class ParticleMorphEngine: NSObject, MTKViewDelegate {
     var colorB: UIColor = .white
     var pointScale: Float = 1
     var intensity: Float = 1
+    /// Chart mode: how released particles leave, and the seconds the `stage` timeline of a release spans.
+    var releaseStyle = ParticleReleaseDust
+    var releaseDuration: Float = 1.6
+    /// Chart mode: the ground for the gravity release, in view points.
+    var floorY: Float = 0
+    /// Chart mode: 0…1, attached particles tremble.
+    var charge: Float = 0
     /// Called once per frame before the GPU work is encoded; drive per-frame inputs from here.
     var onFrame: ((ParticleMorphEngine, CFTimeInterval) -> Void)?
 
@@ -197,7 +204,8 @@ final class ParticleMorphEngine: NSObject, MTKViewDelegate {
     /// Changes targets and/or colors on the GPU at the start of the next frame, keeping each
     /// particle's current position and velocity. `commitCurrentAsStart` freezes where every particle
     /// is right now as its new `startPosition` (for analytic modes that interpolate start → target).
-    func retarget(targets: [SIMD2<Float>]? = nil, colors: [SIMD4<Float>]? = nil,
+    /// `colorsAreTargets`: write `colors` to `targetColor` (the chart mode fades towards it) instead of `color`.
+    func retarget(targets: [SIMD2<Float>]? = nil, colors: [SIMD4<Float>]? = nil, colorsAreTargets: Bool = false,
                   commitCurrentAsStart: Bool = false, stopVelocity: Bool = false) {
         guard particleCount > 0 else { return }
         var flags: UInt32 = 0
@@ -212,7 +220,7 @@ final class ParticleMorphEngine: NSObject, MTKViewDelegate {
         }
         if let colors {
             precondition(colors.count == particleCount, "retarget needs one color per particle")
-            flags |= ParticleRetargetColors.rawValue
+            flags |= colorsAreTargets ? ParticleRetargetTargetColors.rawValue : ParticleRetargetColors.rawValue
             colorBuffer = makeBuffer(colors) ?? gpu.emptyBuffer
         }
         pendingRetargets.append((ParticleRetarget(count: UInt32(particleCount), flags: flags), targetBuffer, colorBuffer))
@@ -365,6 +373,10 @@ final class ParticleMorphEngine: NSObject, MTKViewDelegate {
         u.pointScale = pointScale
         u.intensity = intensity
         u.particleCount = UInt32(particleCount)
+        u.releaseStyle = releaseStyle.rawValue
+        u.releaseDuration = releaseDuration
+        u.floorY = floorY
+        u.charge = charge
         return u
     }
 }

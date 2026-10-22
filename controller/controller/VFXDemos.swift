@@ -17,6 +17,7 @@ final class VFXDemoMenuViewController: UITableViewController {
             ("Matrix Digital Rain", "chevron.left.forwardslash.chevron.right", { MatrixRainDemoViewController() }),
             ("Fluid Mesh Gradient", "paintpalette.fill", { FluidGradientDemoViewController() }),
             ("Particle Morph", "circle.hexagongrid.fill", { ParticleMorphDemoViewController() }),
+            ("Particle Charts", "chart.pie.fill", { ParticleChartsDemoViewController() }),
         ]),
         ("On top of live UI", [
             ("Holographic Card", "creditcard.fill", { HolographicCardDemoViewController() }),

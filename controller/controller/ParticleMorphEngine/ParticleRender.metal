@@ -26,6 +26,9 @@ vertex ParticleVertexOut particleVertex(const device Particle *particles [[buffe
     out.position = p.color.a > 0.002 ? float4(ndc.x, -ndc.y, 0.0, 1.0) : float4(-4.0, -4.0, 0.0, 1.0);
     out.pointSize = clamp(p.size * u.pointScale * u.scale, 1.0, 511.0);
     out.color = p.color;
+    if (u.mode == ParticleModeChart) {
+        out.color.a *= 1.0 + min(length(p.velocity) / 450.0, 2.0);   // particles in flight flare up
+    }
     return out;
 }
 
