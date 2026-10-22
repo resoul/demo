@@ -209,7 +209,7 @@ final class WaterRippleOverlay: VFXMetalView {
 
 /// Watches touches on a view without ever recognizing, cancelling or delaying them,
 /// so buttons, switches and scrolling underneath keep working normally.
-private final class TouchObserverGestureRecognizer: UIGestureRecognizer {
+final class TouchObserverGestureRecognizer: UIGestureRecognizer {
     var onTouch: ((CGPoint, UITouch.Phase) -> Void)?
 
     init() {

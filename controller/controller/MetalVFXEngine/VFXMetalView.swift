@@ -31,15 +31,17 @@ final class VFXGPU {
     }
 
     /// Pipelines blend premultiplied alpha, so transparent overlays composite over UIKit correctly.
-    func renderPipeline(vertex: String, fragment: String) -> MTLRenderPipelineState? {
-        let key = vertex + "|" + fragment
+    /// `format` defaults to `pixelFormat`; HDR views pass their extended-range format.
+    func renderPipeline(vertex: String, fragment: String, format: MTLPixelFormat? = nil) -> MTLRenderPipelineState? {
+        let format = format ?? pixelFormat
+        let key = vertex + "|" + fragment + "|\(format.rawValue)"
         if let cached = renderPipelines[key] { return cached }
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.label = key
         descriptor.vertexFunction = library.makeFunction(name: vertex)
         descriptor.fragmentFunction = library.makeFunction(name: fragment)
         let attachment = descriptor.colorAttachments[0]!
-        attachment.pixelFormat = pixelFormat
+        attachment.pixelFormat = format
         attachment.isBlendingEnabled = true
         attachment.sourceRGBBlendFactor = .one
         attachment.sourceAlphaBlendFactor = .one
