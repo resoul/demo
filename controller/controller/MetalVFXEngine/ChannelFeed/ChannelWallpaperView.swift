@@ -31,7 +31,8 @@ struct WallpaperUniforms {
     var rippleStrength: Float
     var tile: Float
     var time: Float
-    var unused: SIMD2<Float> = .zero
+    var night: Float = 0
+    var unused: Float = 0
 }
 
 final class ChannelWallpaperView: VFXMetalView {
@@ -54,6 +55,14 @@ final class ChannelWallpaperView: VFXMetalView {
     private var phaseTarget: CGFloat = 0
     private var parallax = IslandSpring(.zero, stiffness: 5, dampingRatio: 0.9)
     private var ripple: (origin: CGPoint, start: CFTimeInterval)?
+    /// Theme palettes (the Mini-Telegram chat): colors glide to a new theme, and day turns to night
+    /// through a dusk with stars. When nil, `colors` is used as is.
+    private var themeDay: [SIMD4<Float>]?
+    private var themeNight: [SIMD4<Float>] = []
+    private var shownDay: [SIMD4<Float>] = []
+    private var shownNight: [SIMD4<Float>] = []
+    private var nightSpring = Spring1D(0, stiffness: 2.3, dampingRatio: 1)
+    private var nightTarget: CGFloat = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -72,6 +81,26 @@ final class ChannelWallpaperView: VFXMetalView {
         ripple = (point, time)
     }
 
+    /// Moves the gradient to a theme's day and night palettes.
+    func setTheme(day: [UIColor], night: [UIColor], animated: Bool) {
+        let dayColors = day.map { $0.vfxSIMD(with: traitCollection) }
+        let nightColors = night.map { $0.vfxSIMD(with: traitCollection) }
+        themeDay = dayColors
+        themeNight = nightColors
+        if !animated || shownDay.isEmpty {
+            shownDay = dayColors
+            shownNight = nightColors
+        }
+        isPaused = false
+    }
+
+    /// Day → dusk → night (or back) over a couple of seconds.
+    func setNight(_ on: Bool, animated: Bool) {
+        nightTarget = on ? 1 : 0
+        if !animated { nightSpring.value = nightTarget }
+        isPaused = false
+    }
+
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if pattern == nil, window != nil {
@@ -83,6 +112,12 @@ final class ChannelWallpaperView: VFXMetalView {
         let gravity = LiquidUIMotion.shared.gravity
         parallax.step(toward: CGPoint(x: gravity.x * 22, y: (gravity.y - 0.85) * 22), deltaTime: deltaTime)
         phase.step(toward: phaseTarget, deltaTime: deltaTime)
+        nightSpring.step(toward: nightTarget, deltaTime: deltaTime)
+        if let themeDay {
+            let rate = Float(min(1, deltaTime * 3.5))
+            shownDay = zip(shownDay, themeDay).map { $0 + ($1 - $0) * rate }
+            shownNight = zip(shownNight, themeNight).map { $0 + ($1 - $0) * rate }
+        }
         if let ripple, time - ripple.start > 1.6 {
             self.ripple = nil
         }
@@ -99,7 +134,9 @@ final class ChannelWallpaperView: VFXMetalView {
 
     /// The wallpaper as seen by a target of `viewport` pixels whose top-left is `origin` in this view.
     func uniforms(viewport: SIMD2<Float>, scale: CGFloat, origin: CGPoint) -> WallpaperUniforms {
-        let resolved = colors.map { $0.vfxSIMD(with: traitCollection) }
+        let night = Float(min(max(nightSpring.value, 0), 1))
+        let resolved = themeDay == nil ? colors.map { $0.vfxSIMD(with: traitCollection) }
+            : zip(shownDay, shownNight).map { $0 + ($1 - $0) * night }
         let p = (0..<4).map { ringPoint(phase.value + CGFloat($0 * 2)) }
         let rippleAge = ripple.map { time - $0.start } ?? 0
         return WallpaperUniforms(
@@ -113,7 +150,7 @@ final class ChannelWallpaperView: VFXMetalView {
             rippleOrigin: SIMD2(Float(ripple?.origin.x ?? 0), Float(ripple?.origin.y ?? 0)),
             rippleRadius: Float(rippleAge * 620),
             rippleStrength: ripple == nil ? 0 : Float(max(0, 1 - rippleAge / 1.6)),
-            tile: Float(tile), time: Float(time))
+            tile: Float(tile), time: Float(time), night: night)
     }
 
     override func encode(into commandBuffer: MTLCommandBuffer, target: MTLTexture) {

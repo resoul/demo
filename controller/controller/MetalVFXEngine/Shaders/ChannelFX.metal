@@ -84,7 +84,8 @@ struct WallpaperUniforms {
     float  rippleStrength;
     float  tile;            // pattern tile size, points
     float  time;
-    float2 unused;
+    float  night;           // 0 day … 1 night: sunset glow on the way, then stars (chat wallpaper only)
+    float  unused;
 };
 
 constexpr sampler wallpaperSampler(coord::normalized, address::repeat, filter::linear, mip_filter::linear);
@@ -129,6 +130,25 @@ fragment float4 channel_wallpaper_fragment(ChannelOut in [[stage_in]],
                                            texture2d<float> pattern [[texture(0)]]) {
     float2 p = in.position.xy / u.scale + u.origin;
     float3 color = wallpaperColor(p, u, pattern, 0.0);
+    if (u.night > 0.001) {
+        float2 uv = p / u.size;
+        // Dusk: a warm glow rises from the bottom while the palette turns, strongest half way.
+        float dusk = sin(saturate(u.night) * 3.14159);
+        color += float3(1.0, 0.45, 0.2) * dusk * 0.3 * smoothstep(0.25, 1.0, uv.y);
+        // Stars come out one by one, thicker towards the top, and twinkle.
+        float cellSize = 26.0;
+        float2 cell = floor(p / cellSize);
+        float h = chHash(cell + 7.3);
+        if (h > 0.88) {
+            float2 center = (cell + 0.2 + 0.6 * float2(chHash(cell + 1.1), chHash(cell + 2.7))) * cellSize;
+            float d = length(p - center);
+            float threshold = 0.25 + 0.65 * chHash(cell + 5.5);
+            float shown = smoothstep(threshold, threshold + 0.12, u.night) * (1.0 - uv.y * 0.75);
+            float twinkle = 0.55 + 0.45 * sin(u.time * (1.3 + 3.0 * h) + h * 40.0);
+            float star = exp(-d * d / 0.8) + exp(-d * d / 9.0) * 0.22;
+            color += star * twinkle * shown * float3(1.0, 0.96, 0.88);
+        }
+    }
     color += (chHash(in.position.xy) - 0.5) / 255.0;   // dither: no banding in the dark gradient
     return float4(saturate(color), 1.0);
 }

@@ -61,6 +61,9 @@ final class VFXDemoMenuViewController: UITableViewController {
             ("Bubble Cluster", "circle.hexagongrid.circle.fill", { BubbleClusterDemoViewController() }),
             ("Ambient Feed", "paintpalette.fill", { AmbientFeedDemoViewController() }),
         ]),
+        ("Telegram · приложение", [
+            ("Мини-Telegram", "paperplane.fill", { MTRootViewController() }),
+        ]),
         ("Telegram · приёмы", [
             ("Аватар в Dynamic Island", "person.crop.circle.fill", { ProfileIslandDemoViewController() }),
             ("Коллекционный подарок", "gift.fill", { CollectibleGiftDemoViewController() }),
