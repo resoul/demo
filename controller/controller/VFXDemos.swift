@@ -55,6 +55,12 @@ final class VFXDemoMenuViewController: UITableViewController {
             ("Timeline · X-style", "text.bubble.fill", { TimelineDemoViewController() }),
             ("Photo Feed · Instagram-style", "camera.fill", { PhotoFeedDemoViewController() }),
         ]),
+        ("Social · Live", [
+            ("Voice Room", "waveform.circle.fill", { VoiceRoomDemoViewController() }),
+            ("Chat", "bubble.left.and.bubble.right.fill", { VoiceChatDemoViewController() }),
+            ("Bubble Cluster", "circle.hexagongrid.circle.fill", { BubbleClusterDemoViewController() }),
+            ("Ambient Feed", "paintpalette.fill", { AmbientFeedDemoViewController() }),
+        ]),
         ("Effects", [
             ("Matrix Digital Rain", "chevron.left.forwardslash.chevron.right", { MatrixRainDemoViewController() }),
             ("Fluid Mesh Gradient", "paintpalette.fill", { FluidGradientDemoViewController() }),
